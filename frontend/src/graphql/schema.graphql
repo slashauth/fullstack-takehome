@@ -1,0 +1,21 @@
+fragment TradingSessionsFragment on TradingSession {
+  open
+  close
+  high
+  low
+  time
+}
+
+fragment SymbolFragment on Symbol {
+  id
+  name
+  sessions {
+    ...TradingSessionsFragment
+  }
+}
+
+query SymbolByID($id: ID!) {
+  symbol(id: $id) {
+    ...SymbolFragment
+  }
+}

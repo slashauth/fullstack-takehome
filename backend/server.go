@@ -9,13 +9,17 @@ import (
 	"time"
 
 	"github.com/99designs/gqlgen/graphql/handler"
+	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/getdebrief/fullstack-takehome/graph"
 	"github.com/getdebrief/fullstack-takehome/graph/generated"
 	"github.com/getdebrief/fullstack-takehome/graph/model"
 	"github.com/getdebrief/fullstack-takehome/notif"
 	"github.com/getdebrief/fullstack-takehome/symbols"
+	"github.com/go-chi/chi"
 	"github.com/go-redis/redis"
+	"github.com/gorilla/websocket"
+	"github.com/rs/cors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -67,11 +71,35 @@ func main() {
 
 	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: &graph.Resolver{}}))
 
+	srv.AddTransport(transport.Websocket{
+		KeepAlivePingInterval: 10 * time.Second,
+		Upgrader: websocket.Upgrader{
+			CheckOrigin: func(r *http.Request) bool {
+				return true
+			},
+		},
+	})
+
+	srv.AddTransport(transport.Options{})
+	srv.AddTransport(transport.GET{})
+	srv.AddTransport(transport.POST{})
+
 	go createSymbolUpdates()
 
-	http.Handle("/", playground.Handler("GraphQL playground", "/query"))
-	http.Handle("/query", srv)
+	router := chi.NewRouter()
+
+	router.Use(cors.New(cors.Options{
+		AllowedOrigins:     []string{"http://localhost:*"},
+		AllowCredentials:   true,
+		Debug:              false,
+		AllowedMethods:     []string{"HEAD", "GET", "POST"},
+		AllowedHeaders:     []string{"*"},
+		OptionsPassthrough: false,
+	}).Handler)
+
+	router.Handle("/", playground.Handler("GraphQL playground", "/query"))
+	router.Handle("/query", srv)
 
 	log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)
-	log.Fatal(http.ListenAndServe(":"+port, nil))
+	log.Fatal(http.ListenAndServe(":"+port, router))
 }
