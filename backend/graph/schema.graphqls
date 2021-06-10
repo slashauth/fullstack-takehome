@@ -1,0 +1,40 @@
+# GraphQL schema example
+#
+# https://gqlgen.com/getting-started/
+
+# Time is an RFC3339 timestamp.
+scalar Time
+
+type Symbol {
+  id: ID!
+  name: String!
+  sessions: [TradingSession!]!
+}
+
+type PriceUpdate {
+  symbolName: String!
+  session: TradingSession!
+}
+
+type TradingSession {
+  # NOTE: These should all be in pennies so we don't have to pass floats around
+  time: Time!
+  open: Int!
+  close: Int!
+  high: Int!
+  low: Int!
+}
+
+type Query {
+  watchedSymbols: [Symbol!]!
+  symbol(id: ID!): Symbol
+}
+
+type Mutation {
+  addSymbolToWatchList(id: ID!): Symbol!
+  removeSymbolFromWatchList(id: ID!): Symbol!
+}
+
+type Subscription {
+  priceUpdatesFromSymbol(id: ID!): PriceUpdate!
+}
